@@ -60,9 +60,18 @@ type Data struct {
 	Satellite  int `json:"satellite"`
 }
 
+// Define a global HTTP client with a custom Transport
+var httpClient = &http.Client{
+    Transport: &http.Transport{
+        MaxIdleConns:        100,  
+        MaxIdleConnsPerHost: 100,  
+        IdleConnTimeout:     90 * time.Second, 
+    },
+}
+
 const (
-	MaxWorkers = 100000 // Maximum number of concurrent goroutines
-	BufferSize = 8192 // Buffer size for UDP messages
+	MaxWorkers = 100000 
+	BufferSize = 8192 
 )
 
 var workerPool = make(chan struct{}, MaxWorkers) // Worker pool to limit concurrent goroutines
@@ -181,7 +190,7 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 			log.Printf("[INFO] Data sending to http://gps-backend.imc.co.tz:8000/api/v1/entries/extends ");
 	err = sendJSONDataToEndpoint(string(jsonData), "http://gps-backend.imc.co.tz:8000/api/v1/entries/extends")
 	if err != nil {
-		log.Printf("[INFO] Error sending JSON data to endpoint: %v", err)
+		log.Printf("[ERROR] Error sending JSON data to endpoint: %v", err)
 	}
 
 	}()
@@ -261,14 +270,21 @@ func getIntValue(decodedValues map[string]interface{}, propertyName string) int 
 
 
 func sendJSONDataToEndpoint(jsonData string, endpoint string) error {
-	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer([]byte(jsonData)))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+    req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer([]byte(jsonData)))
+    if err != nil {
+        return err
+    }
+    req.Header.Set("Content-Type", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-	return nil
+    resp, err := httpClient.Do(req)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+    }
+
+    return nil
 }
