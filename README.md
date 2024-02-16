@@ -1,4 +1,4 @@
-##Create a service file at
+# Create a service file at
 
   touch /etc/systemd/system/my-go-daemon.service
 
