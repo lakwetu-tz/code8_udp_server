@@ -9,10 +9,10 @@ import (
 	"encoding/json"
 	"time"
 	"net/http"
-	"bytes"
 	"sync"
 
 	"github.com/filipkroca/teltonikaparser"
+	"github.com/nsqio/go-nsq"
 )
 
 type Server struct {
@@ -76,6 +76,8 @@ const (
 
 var workerPool = make(chan struct{}, MaxWorkers) // Worker pool to limit concurrent goroutines
 
+var nsqProducer *nsq.Producer
+
 func (t *Server) New(callBack func(udpc *net.UDPConn, buf *[]byte, len int, addr *net.UDPAddr)) {
 
 	udpc, err := net.ListenUDP(t.Protocol, &net.UDPAddr{IP: t.IP, Port: t.Port, Zone: ""})
@@ -115,6 +117,11 @@ func (t *Server) New(callBack func(udpc *net.UDPConn, buf *[]byte, len int, addr
 }
 
 func main() {
+	err := InitializeNSQProducer()
+    if err != nil {
+        log.Fatalf("[INFO] Failed to initialize NSQ producer: %v", err)
+    }
+
 	server := Server{
 		Protocol: "udp",
 		IP:       []byte{0, 0, 0, 0},
@@ -187,12 +194,12 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 				log.Printf("[ERROR] Error marshaling to JSON: %v", err)
 			} 
 		
-			log.Printf("[INFO] Data sending to http://gps-backend.imc.co.tz:8000/api/v1/entries/extends ");
-	err = sendJSONDataToEndpoint(string(jsonData), "http://gps-backend.imc.co.tz:8000/api/v1/entries/extends")
-	if err != nil {
-		log.Printf("[ERROR] Error sending JSON data to endpoint: %v", err)
-	}
+			log.Printf("[INFO] Data sending to a consumer with extended_data_topic ");
 
+			err = PublishDataToNSQ("extended_data_topic", []byte(jsonData))
+			if err != nil {
+				log.Printf("[ERROR] Failed to publish data to NSQ: %v", err)
+			}
 	}()
 	
 
@@ -225,15 +232,13 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 		if err != nil {
 			log.Printf("[ERROR]  Error when marshaling to JSON: %v", err );
 		}
-		log.Printf("[INFO] Data sending to http://gps-backend.imc.co.tz:8000/api/v1/entries/params ");
-		
-		err = sendJSONDataToEndpoint(string(jsonString), "http://gps-backend.imc.co.tz:8000/api/v1/entries/params")
+		log.Printf("[INFO] Data sending to a consumer with basic_data_topic");
+
+		err = PublishDataToNSQ("basic_data_topic", []byte(jsonString))
 		if err != nil {
-			log.Printf("[ERROR] Error sending JSON data to endpoint: %v", err);
+			log.Printf("[ERROR] Failed to publish data to NSQ: %v", err)
 		}
-		
-		
-		// separate task using goroutine
+
 
 
 	wg.Wait()
@@ -268,23 +273,18 @@ func getIntValue(decodedValues map[string]interface{}, propertyName string) int 
 	return 0 // Default value if property not found
 }
 
-
-func sendJSONDataToEndpoint(jsonData string, endpoint string) error {
-    req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer([]byte(jsonData)))
+// InitializeNSQProducer initializes the NSQ producer.
+func InitializeNSQProducer() error {
+    var err error
+    nsqProducer, err = nsq.NewProducer("127.0.0.1:4150", nsq.NewConfig())
     if err != nil {
         return err
     }
-    req.Header.Set("Content-Type", "application/json")
-
-    resp, err := httpClient.Do(req)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
-
-    if resp.StatusCode != http.StatusOK {
-        return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-    }
-
     return nil
 }
+
+// PublishDataToNSQ publishes data to the specified NSQ topic.
+func PublishDataToNSQ(topic string, data []byte) error {
+    return nsqProducer.Publish(topic, data)
+}
+
