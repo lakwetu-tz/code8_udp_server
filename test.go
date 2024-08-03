@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	serverAddr   = "127.0.0.1:8800" // Update with your server address
+	serverAddr   = "nkcngloan.co.tz:8800" // Update with your server address
 	numDevices   = 100              // Number of devices
 	maxSleepTime = 10000              // Maximum sleep time (milliseconds) between message sending
 )

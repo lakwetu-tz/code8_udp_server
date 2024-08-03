@@ -152,12 +152,12 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 			for _, ioel := range val.Elements {
 				decoded, err := humanDecoder.Human(&ioel, "FMBXY") 
 				if err != nil {
-					log.Panicf("[Error] Error when converting human, %v\n", err)
+					log.Printf("[Error] Error when converting human, %v\n", err)
 					continue
 				}
 	
 				if val, err := (*decoded).GetFinalValue(); err != nil {
-					log.Panicf("[Error] Unable to GetFinalValue() %v", err)
+					log.Printf("[Error] Unable to GetFinalValue() %v", err)
 					continue
 				} else if val != nil {
 					decodedValues[fmt.Sprint(decoded.AvlEncodeKey.PropertyName)] = val

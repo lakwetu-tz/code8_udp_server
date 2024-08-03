@@ -1,6 +1,6 @@
 module main
 
-go 1.22.1
+go 1.19
 
 require (
 	github.com/filipkroca/teltonikaparser v0.0.0-20221014211009-24bbb6460c5e
