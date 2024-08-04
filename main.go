@@ -192,7 +192,7 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 		jsonData, err := json.MarshalIndent(extendedData, "", "    ")
 			if err != nil {
 				log.Printf("[ERROR] Error marshaling to JSON: %v", err)
-			} 
+			}
 		
 			log.Printf("[INFO] Data sending to a consumer with extended_data_topic ");
 
@@ -232,6 +232,8 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 		if err != nil {
 			log.Printf("[ERROR]  Error when marshaling to JSON: %v", err );
 		}
+		
+		
 		log.Printf("[INFO] Data sending to a consumer with basic_data_topic");
 
 		err = PublishDataToNSQ("basic_data_topic", []byte(jsonString))
