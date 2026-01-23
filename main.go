@@ -2,14 +2,14 @@
 package main
 
 import (
-	 
-	"fmt"
-	"net"
-	"log"
+	"bytes"
 	"encoding/json"
-	"time"
+	"fmt"
+	"log"
+	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/filipkroca/teltonikaparser"
 	"github.com/nsqio/go-nsq"
@@ -50,28 +50,28 @@ type JsonData struct {
 }
 
 type Data struct {
-	Utime 	  string `json:"utime"`
-	Priority  int    `json:"priority"`
+	Utime     string  `json:"utime"`
+	Priority  int     `json:"priority"`
 	Lat       float64 `json:"lat"`
 	Lng       float64 `json:"lng"`
 	Altitude  float64 `json:"altitude"`
-	Angle     int `json:"angle"`
-	Speed     int `json:"speed"`
-	Satellite  int `json:"satellite"`
+	Angle     int     `json:"angle"`
+	Speed     int     `json:"speed"`
+	Satellite int     `json:"satellite"`
 }
 
 // Define a global HTTP client with a custom Transport
 var httpClient = &http.Client{
-    Transport: &http.Transport{
-        MaxIdleConns:        100,  
-        MaxIdleConnsPerHost: 100,  
-        IdleConnTimeout:     90 * time.Second, 
-    },
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     90 * time.Second,
+	},
 }
 
 const (
-	MaxWorkers = 100000 
-	BufferSize = 8192 
+	MaxWorkers = 100000
+	BufferSize = 8192
 )
 
 var workerPool = make(chan struct{}, MaxWorkers) // Worker pool to limit concurrent goroutines
@@ -95,7 +95,7 @@ func (t *Server) New(callBack func(udpc *net.UDPConn, buf *[]byte, len int, addr
 		n, addr, err := udpc.ReadFromUDP(buf)
 		if err != nil {
 			log.Println("[ERROR] Error when listening:", err)
-			continue 
+			continue
 		}
 
 		// Slice data
@@ -118,9 +118,9 @@ func (t *Server) New(callBack func(udpc *net.UDPConn, buf *[]byte, len int, addr
 
 func main() {
 	err := InitializeNSQProducer()
-    if err != nil {
-        log.Fatalf("[INFO] Failed to initialize NSQ producer: %v", err)
-    }
+	if err != nil {
+		log.Fatalf("[INFO] Failed to initialize NSQ producer: %v", err)
+	}
 
 	server := Server{
 		Protocol: "udp",
@@ -130,13 +130,13 @@ func main() {
 	// Create new server
 	server.New(onUDPMessage)
 	defer fmt.Println("Server closed")
-	
+
 }
 
 // onUDPMessage is invoked when a packet arrives
 func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr) {
 	var wg sync.WaitGroup
-    wg.Add(1)
+	wg.Add(1)
 
 	x, err := teltonikaparser.Decode(dataBs)
 	if err != nil {
@@ -150,12 +150,12 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 
 		for _, val := range x.Data {
 			for _, ioel := range val.Elements {
-				decoded, err := humanDecoder.Human(&ioel, "FMBXY") 
+				decoded, err := humanDecoder.Human(&ioel, "FMBXY")
 				if err != nil {
 					log.Printf("[Error] Error when converting human, %v\n", err)
 					continue
 				}
-	
+
 				if val, err := (*decoded).GetFinalValue(); err != nil {
 					log.Printf("[Error] Unable to GetFinalValue() %v", err)
 					continue
@@ -165,7 +165,7 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 			}
 
 		}
-		
+
 		extendedData := ExtendedData{
 			Imei:              x.IMEI,
 			Ignition:          getIntValue(decodedValues, "Ignition"),
@@ -190,29 +190,28 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 		}
 
 		jsonData, err := json.MarshalIndent(extendedData, "", "    ")
-			if err != nil {
-				log.Printf("[ERROR] Error marshaling to JSON: %v", err)
-			}
-		
-			log.Printf("[INFO] Data sending to a consumer with extended_data_topic ");
+		if err != nil {
+			log.Printf("[ERROR] Error marshaling to JSON: %v", err)
+		}
 
-			err = PublishDataToNSQ("extended_data_topic", []byte(jsonData))
-			if err != nil {
-				log.Printf("[ERROR] Failed to publish data to NSQ: %v", err)
-			}
+		log.Printf("[INFO] Data sending to a consumer with extended_data_topic ")
+
+		err = PublishDataToNSQ("extended_data_topic", []byte(jsonData))
+		if err != nil {
+			log.Printf("[ERROR] Failed to publish data to NSQ: %v", err)
+		}
 	}()
-	
 
 	var dataSlice []Data
 
 	for _, data := range x.Data {
 		if data.Lat != 0 || data.Lng != 0 {
-				lat := float64(data.Lat) / 10000000.0
-				lng := float64(data.Lng) / 10000000.0
-				utime := time.Unix(int64(data.Utime), 0).Format("2006-01-02 15:04:05")
+			lat := float64(data.Lat) / 10000000.0
+			lng := float64(data.Lng) / 10000000.0
+			utime := time.Unix(int64(data.Utime), 0).Format("2006-01-02 15:04:05")
 
 			dataSlice = append(dataSlice, Data{
-				Utime: 		fmt.Sprint(utime),
+				Utime:     fmt.Sprint(utime),
 				Priority:  int(data.Priority),
 				Lat:       lat,
 				Lng:       lng,
@@ -221,33 +220,32 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 				Speed:     int(data.Speed),
 				Satellite: int(data.VisSat),
 			})
-		}}
-
-		basicTable := JsonData{
-			IMEI: x.IMEI,
-			Data: dataSlice,
 		}
-	
-		jsonString, err := json.MarshalIndent(basicTable, "", "    ")
-		if err != nil {
-			log.Printf("[ERROR]  Error when marshaling to JSON: %v", err );
-		}
-		
-		
-		log.Printf("[INFO] Data sending to a consumer with basic_data_topic");
+	}
 
-		err = PublishDataToNSQ("basic_data_topic", []byte(jsonString))
-		if err != nil {
-			log.Printf("[ERROR] Failed to publish data to NSQ: %v", err)
-		}
+	basicTable := JsonData{
+		IMEI: x.IMEI,
+		Data: dataSlice,
+	}
 
+	jsonString, err := json.MarshalIndent(basicTable, "", "    ")
+	if err != nil {
+		log.Printf("[ERROR]  Error when marshaling to JSON: %v", err)
+	}
 
+	log.Printf("[INFO] Data sending to a consumer with basic_data_topic")
+
+	err = SendBasicDataToEndpoint("https://nkcng.ricut.co.tz/api/gps", []byte(jsonString))
+
+	// err = PublishDataToNSQ("basic_data_topic", []byte(jsonString))
+	if err != nil {
+		log.Printf("[ERROR] Failed to publish data to NSQ: %v", err)
+	}
 
 	wg.Wait()
 	// Respond back to the client
 	(*udpc).WriteToUDP([]byte("mission control "), addr)
 }
-
 
 func getIntValue(decodedValues map[string]interface{}, propertyName string) int {
 	if val, ok := decodedValues[propertyName]; ok {
@@ -277,16 +275,36 @@ func getIntValue(decodedValues map[string]interface{}, propertyName string) int 
 
 // InitializeNSQProducer initializes the NSQ producer.
 func InitializeNSQProducer() error {
-    var err error
-    nsqProducer, err = nsq.NewProducer("127.0.0.1:4150", nsq.NewConfig())
-    if err != nil {
-        return err
-    }
-    return nil
+	var err error
+	nsqProducer, err = nsq.NewProducer("127.0.0.1:4150", nsq.NewConfig())
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // PublishDataToNSQ publishes data to the specified NSQ topic.
 func PublishDataToNSQ(topic string, data []byte) error {
-    return nsqProducer.Publish(topic, data)
+	return nsqProducer.Publish(topic, data)
 }
 
+func SendBasicDataToEndpoint(url string, payload []byte) error {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("HTTP request failed with status %s", resp.Status)
+	}
+
+	return nil
+}
