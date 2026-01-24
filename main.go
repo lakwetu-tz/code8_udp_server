@@ -290,6 +290,7 @@ func PublishDataToNSQ(topic string, data []byte) error {
 
 func SendBasicDataToEndpoint(url string, payload []byte) error {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	fmt.Println(payload []byte)
 	if err != nil {
 		return err
 	}
@@ -303,6 +304,7 @@ func SendBasicDataToEndpoint(url string, payload []byte) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		fmt.Println(resp)
 		return fmt.Errorf("HTTP request failed with status %s", resp.Status)
 	}
 
