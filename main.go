@@ -290,7 +290,7 @@ func PublishDataToNSQ(topic string, data []byte) error {
 
 func SendBasicDataToEndpoint(url string, payload []byte) error {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-	fmt.Println(payload []byte)
+	fmt.Println(payload)
 	if err != nil {
 		return err
 	}
