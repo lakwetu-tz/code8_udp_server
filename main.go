@@ -235,9 +235,9 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 
 	log.Printf("[INFO] Data sending to a consumer with basic_data_topic")
 
-	err = SendBasicDataToEndpoint("http://nkcng.ricut.co.tz/api/gps", []byte(jsonString))
+	// err = SendBasicDataToEndpoint("http://nkcng.ricut.co.tz/api/gps", []byte(jsonString))
 
-	// err = PublishDataToNSQ("basic_data_topic", []byte(jsonString))
+	err = PublishDataToNSQ("basic_data_topic", []byte(jsonString))
 	if err != nil {
 		log.Printf("[ERROR] Failed to publish data to NSQ: %v", err)
 	}
@@ -290,7 +290,6 @@ func PublishDataToNSQ(topic string, data []byte) error {
 
 func SendBasicDataToEndpoint(url string, payload []byte) error {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-	fmt.Println(payload)
 	if err != nil {
 		return err
 	}
