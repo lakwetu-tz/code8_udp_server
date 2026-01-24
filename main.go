@@ -235,7 +235,7 @@ func onUDPMessage(udpc *net.UDPConn, dataBs *[]byte, len int, addr *net.UDPAddr)
 
 	log.Printf("[INFO] Data sending to a consumer with basic_data_topic")
 
-	err = SendBasicDataToEndpoint("https://nkcng.ricut.co.tz/api/gps", []byte(jsonString))
+	err = SendBasicDataToEndpoint("http://nkcng.ricut.co.tz/api/gps", []byte(jsonString))
 
 	// err = PublishDataToNSQ("basic_data_topic", []byte(jsonString))
 	if err != nil {
